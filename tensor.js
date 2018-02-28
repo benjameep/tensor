@@ -30,9 +30,8 @@ class Tensor{
 
         return [slice,dimi]
     }
-    pushSlice(str){
+    pushSlice(slice,dimi){
         // CAUTION: slice may be undefined, but dimi is guarenteed
-        var [slice,dimi] = this.parseSlice(str)
         // take out the old slice
         this.slices.splice(dimi,1)
         // push the new slice to the back
@@ -45,59 +44,52 @@ class Tensor{
     }
     getSlice(str){
         var copy = this.copy()
-        copy.pushSlice(str)
+        var [slice,dimi] = this.parseSlice(str)
+        copy.pushSlice(slice,dimi)
         return copy
     }
     computeIndex(position){
         return this.dims.reduce((sum,dim,i) => sum += dim.size * position[i],0)
     }
-    // *[Symbol.iterator](){
-    //     this.slices.find(slice => slice.values.length > 1)
-    //     yield
-    // }
-    oldValueOf(){
-        // TODO: Figure out a faster way of doing this
-        const levels = this.slices.concat(this.dims.filter(dim => !this.slices.find(slice => slice.dim == dim)))
+    *[Symbol.iterator](){
+        let dimi = this.slices.findIndex(slice => !slice || slice.length != 1)
+        dimi = dimi == -1 ? this.slices.length : dimi
 
-        function loop(level,position){
-
-            // TODO: rename these variables so that it is more readable
-            level = level || 0
-            position = position || []
-            if(level >= levels.length){
-                return this.data[this.computeIndex(position)]
-            } else {
-                var output = levels[level].values.reduce((obj,value) => {
-                    position[(levels[level].dim||levels[level]).index] = value
-                    obj[value] = loop.call(this,level+1,position)
-                    return obj
-                },{})
-
-                var outputKeys = Object.keys(output)
-                return outputKeys.length == 1 ? output[outputKeys[0]] : output
-            }
+        for(let si = 0; si < (this.slices[dimi]||this.dims[dimi].values).length; si++){
+            let vi = this.slices[dimi]?this.slices[dimi][si]:si
+            let copy = this.copy()
+            copy.pushSlice([vi],dimi)
+            yield copy
         }
-
-        return loop.call(this)
     }
     valueOf(){
-        let position = []
-        for(let dimi = 0; dimi < this.dims.length; dimi++){
+        function loop(dimi,position){
+            // If we are done
+            if(dimi >= this.dims.length)
+                return this.data[this.computeIndex(position)]
+            
+            // Else
+            let structure = {}
             for(let si = 0; si < (this.slices[dimi]||this.dims[dimi].values).length; si++){
                 position[dimi] = this.slices[dimi]?this.slices[dimi][si]:si
-                console.log(position)
+                // recurse
+                structure[this.dims[dimi].values[position[dimi]]] = loop.call(this,dimi+1,position)
             }
+            let structureKeys = Object.keys(structure)
+            return structureKeys.length == 1 ? structure[structureKeys[0]] : structure
         }
+
+        return loop.call(this,0,[])
     }
     set(value){
-        var position = this.dims.map(dim => this.slices.find(slice => slice.dim == dim))
-        if(!position.every(n => n))
-            throw 'Not accurate enough to set'
+        // var position = this.dims.map(dim => this.slices.find(slice => slice.dim == dim))
+        // if(!position.every(n => n))
+        //     throw 'Not accurate enough to set'
         
-        // TODO: add check for only one value in each dimension
-        // TODO: Or somehow do multiple assignment
-        position = position.map(p => p.values[0])
-        return this.data[this.getDist(position)] = value
+        // // TODO: add check for only one value in each dimension
+        // // TODO: Or somehow do multiple assignment
+        // position = position.map(p => p.values[0])
+        // return this.data[this.getDist(position)] = value
     }
 }
 
