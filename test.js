@@ -8,6 +8,6 @@ var tensor = new Tensor({
 
 // console.log(tensor.getSlice('shape').getSlice('size:small'))
 
-for(var sub of tensor){
-    console.log(sub)
+for(var sub of tensor.getSlice('size:small').getSlice('shape:circle')){
+    console.log(sub.valueOf())
 }

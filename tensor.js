@@ -40,7 +40,9 @@ class Tensor{
         this.dims.splice(this.slices.length-1,0,this.dims.splice(dimi,1)[0])
     }
     copy(){
-        return Object.assign(Object.create(Tensor.prototype),this)
+        let copy = Object.assign(Object.create(Tensor.prototype),this)
+        copy.slices = copy.slices.slice()
+        return copy
     }
     getSlice(str){
         var copy = this.copy()
